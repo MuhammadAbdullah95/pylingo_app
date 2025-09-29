@@ -354,13 +354,13 @@ const PyLingo = () => {
                 </div>
                 <button
                   onClick={() => setShowLevelSelector(!showLevelSelector)}
-                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium transition-colors"
+                  className="btn px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-full text-sm font-medium transition-colors"
                 >
                   Select Level
                 </button>
               </div>
               <p className="text-gray-600 mb-3">{level.description}</p>
-              <div className="bg-blue-50 border-l-4 border-blue-600 p-4 rounded">
+              <div className="bg-blue-50 p-4 rounded">
                 <p className="font-semibold text-blue-900">Task: {level.task}</p>
               </div>
             </div>
@@ -371,7 +371,7 @@ const PyLingo = () => {
                 <span className="text-gray-300 text-sm font-medium">Code Editor</span>
                 <button
                   onClick={resetLevel}
-                  className="flex items-center gap-1 text-gray-400 hover:text-white text-sm transition-colors"
+                  className="btn flex items-center gap-1 text-gray-400 hover:text-white text-sm transition-colors"
                 >
                   <RotateCcw className="w-4 h-4" />
                   Reset
@@ -388,14 +388,14 @@ const PyLingo = () => {
                 <button
                   onClick={checkCode}
                   disabled={isChecking}
-                  className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-colors"
+                  className="btn flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded-full font-semibold"
                 >
                   {isChecking ? 'Checking...' : 'Run Code'}
                   <ChevronRight className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setShowHint(!showHint)}
-                  className="flex items-center gap-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg font-semibold transition-colors"
+                  className="btn flex items-center gap-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-full font-semibold"
                 >
                   <Lightbulb className="w-4 h-4" />
                   {showHint ? 'Hide' : 'Show'} Hint
@@ -405,7 +405,7 @@ const PyLingo = () => {
 
             {/* Output */}
             {output && (
-              <div className={`rounded-lg shadow-lg p-6 ${showSuccess ? 'bg-green-50 border-2 border-green-500' : 'bg-white'}`}>
+              <div className={`rounded-lg shadow-lg p-6 ${showSuccess ? 'bg-green-50' : 'bg-white'}`}>
                 <h3 className="font-bold text-lg mb-2 text-gray-800">Output:</h3>
                 <pre className="whitespace-pre-wrap font-mono text-sm text-gray-700">{output}</pre>
               </div>
@@ -413,7 +413,7 @@ const PyLingo = () => {
 
             {/* Hint */}
             {showHint && (
-              <div className="bg-yellow-50 border-l-4 border-yellow-500 rounded-lg shadow-lg p-6">
+              <div className="bg-yellow-50 rounded-lg shadow-lg p-6">
                 <div className="flex items-start gap-3">
                   <Lightbulb className="w-5 h-5 text-yellow-600 mt-1" />
                   <div>
@@ -440,7 +440,7 @@ const PyLingo = () => {
                       key={lvl.id}
                       onClick={() => isUnlocked && selectLevel(lvl.id)}
                       disabled={!isUnlocked}
-                      className={`w-full text-left p-3 rounded-lg transition-all ${
+                      className={`btn w-full text-left p-3 rounded-lg transition-all ${
                         isCurrent
                           ? 'bg-blue-600 text-white shadow-md'
                           : isCompleted
