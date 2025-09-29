@@ -180,53 +180,83 @@ const PyLingo = () => {
   const checkCode = async () => {
     const level = levels[currentLevel - 1];
     setIsChecking(true);
-    setOutput('Evaluating your code...');
+    setOutput('Evaluating your code using Gemini...');
+
+    // Read API key from Vite environment variables. Users should set VITE_GEMINI_API_KEY in .env
+    const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
+    const GEMINI_MODEL = 'gemini-2.5-flash-preview-05-20';
+
+    if (!GEMINI_API_KEY) {
+      setOutput('Gemini API key is not configured. Please set VITE_GEMINI_API_KEY in your environment and restart the dev server.');
+      setIsChecking(false);
+      return;
+    }
+
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+
+    // System instruction to guide the model's persona and enforce the JSON output
+    const systemPrompt = `You are an expert, strict Python code evaluator for a learning platform called PyLingo. Your primary goal is to determine if the student's code fully and correctly satisfies the task requirements, specifically focusing on the required output and the underlying conceptual logic (e.g., using a loop if a loop is required). The student's environment cannot handle user input functions like input() and is only evaluating the print output and code structure.\n\nRespond ONLY with a single JSON object. Do not include any markdown or explanatory text outside of the JSON block.\n\nJSON Structure:\n{\n  "correct": true/false,\n  "feedback": "brief explanation of why it's correct or what's wrong (max 2 sentences)",\n  "suggestion": "optional hint/correction if incorrect (max 1 sentence) or the explanation from the level if no specific hint is necessary"\n}`;
+
+    // User query includes the task and the student's attempt
+    const userQuery = `Task: ${level.task}\nExpected Output/Requirement: ${typeof level.expectedOutput === 'function' ? 'Must satisfy task requirements (e.g., use a loop, define a function, print specific data types)' : level.expectedOutput}\n\nStudent's Code:\n${code}`;
+
+    const payload = {
+      contents: [{ parts: [{ text: userQuery }] }],
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      generationConfig: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: 'OBJECT',
+          properties: {
+            correct: { type: 'BOOLEAN' },
+            feedback: { type: 'STRING' },
+            suggestion: { type: 'STRING' }
+          },
+          propertyOrdering: ['correct', 'feedback', 'suggestion']
+        },
+        temperature: 0.1
+      }
+    };
 
     try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const response = await fetch(apiUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': 'YOUR_API_KEY_HERE',
-          'anthropic-version': '2023-06-01'
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1024,
-          messages: [{
-            role: 'user',
-            content: `You are evaluating a Python learning exercise. 
-
-Task: ${level.task}
-Expected Output: ${typeof level.expectedOutput === 'function' ? 'See task requirements' : level.expectedOutput}
-
-Student's Code:
-${code}
-
-Evaluate if the student's code correctly accomplishes the task. Consider:
-1. Does it produce the expected output?
-2. Is the logic functionally correct even if the implementation differs?
-3. Are there any syntax errors?
-
-Respond in JSON format:
-{
-  "correct": true/false,
-  "feedback": "brief explanation of why it's correct or what's wrong",
-  "suggestion": "optional hint if incorrect"
-}`
-          }]
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
 
       const data = await response.json();
-      
-      // Extract JSON from Claude's response, handling markdown code blocks
-      let responseText = data.content[0].text;
-      
-      // Remove markdown code blocks if present
-      responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      
-      const result = JSON.parse(responseText);
+
+      if (data.error) {
+        throw new Error(data.error.message || 'Gemini API returned an error.');
+      }
+
+      // Try to extract the model's JSON output robustly
+      const candidate = data.candidates?.[0] || null;
+      let responseText = null;
+
+      if (candidate && candidate.content && candidate.content.parts) {
+        responseText = candidate.content.parts[0].text;
+      } else if (typeof data === 'string') {
+        responseText = data;
+      }
+
+      if (!responseText) {
+        throw new Error('Could not find model output in the Gemini response.');
+      }
+
+      // Extract JSON object from any surrounding text
+      const trimmed = responseText.trim();
+      const firstBrace = trimmed.indexOf('{');
+      const lastBrace = trimmed.lastIndexOf('}');
+      const jsonText = firstBrace !== -1 && lastBrace !== -1 ? trimmed.slice(firstBrace, lastBrace + 1) : trimmed;
+
+      let result;
+      try {
+        result = JSON.parse(jsonText);
+      } catch (err) {
+        throw new Error('Failed to parse JSON from Gemini response.');
+      }
 
       if (result.correct) {
         setOutput('✓ Correct! Well done!\n\n' + result.feedback);
@@ -238,19 +268,22 @@ Respond in JSON format:
           setStreak(1);
           setLastCorrect(true);
         }
-        
+
+        // Auto-advance to the next level after a brief delay
         setTimeout(() => {
           if (currentLevel < levels.length) {
             setCurrentLevel(prev => prev + 1);
           }
         }, 1500);
       } else {
-        setOutput(`✗ Not quite right.\n\n${result.feedback}\n\n${result.suggestion || level.explanation}`);
+        setOutput(`✗ Not quite right.\n\n${result.feedback}\n\nHint/Explanation: ${result.suggestion || level.explanation}`);
         setStreak(0);
         setLastCorrect(false);
       }
+
     } catch (error) {
-      setOutput(`Error evaluating code: ${error.message}\n\nPlease check your API key configuration.`);
+      console.error('Gemini API Error:', error);
+      setOutput(`Error evaluating code: ${error.message}\n\nPlease ensure your code is valid Python syntax and that the Gemini API key is configured.`);
     } finally {
       setIsChecking(false);
     }
