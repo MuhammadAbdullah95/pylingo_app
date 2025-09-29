@@ -180,7 +180,7 @@ const PyLingo = () => {
   const checkCode = async () => {
     const level = levels[currentLevel - 1];
     setIsChecking(true);
-    setOutput('Evaluating your code using Gemini...');
+    setOutput('Evaluating your code...');
 
     // We use a server-side endpoint (/api/evaluate) to keep the Gemini API key secret.
     // The server will call Gemini and return a parsed JSON evaluation.
